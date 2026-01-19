@@ -3,6 +3,7 @@ import uuid
 import hashlib
 import datetime
 import ast
+import os
 import json
 import yaml
 from enum import Enum
@@ -11,6 +12,8 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field, ValidationError
 
 # --- Enumerations for Data Models ---
+
+
 class FindingType(str, Enum):
     """Enumerates types of security findings."""
     SECRET = "SECRET"
@@ -22,12 +25,14 @@ class FindingType(str, Enum):
     HALLUCINATED_PACKAGE = "HALLUCINATED_PACKAGE"
     LICENSE_RISK = "LICENSE_RISK"
 
+
 class Severity(str, Enum):
     """Enumerates severity levels for findings."""
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
+
 
 class GateType(str, Enum):
     """Enumerates types of CI/CD gates."""
@@ -37,6 +42,7 @@ class GateType(str, Enum):
     CI_SECURITY = "CI_SECURITY"
     PRE_DEPLOY = "PRE_DEPLOY"
 
+
 class DependencyStatus(str, Enum):
     """Enumerates status for dependency packages."""
     ALLOW = "ALLOW"
@@ -44,15 +50,19 @@ class DependencyStatus(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 # --- Pydantic Data Models ---
+
+
 class CodeArtifact(BaseModel):
     """Represents a code artifact being analyzed."""
     artifact_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     filename: str
-    language: str = "python" # Defaulting to python for this lab
-    content_hash: str # SHA256 hash of the content
-    source: str = "UNKNOWN" # e.g., COPILOT, CLAUDE, AGENT, UNKNOWN
-    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
-    content: str # The actual code content, kept for processing
+    language: str = "python"  # Defaulting to python for this lab
+    content_hash: str  # SHA256 hash of the content
+    source: str = "UNKNOWN"  # e.g., COPILOT, CLAUDE, AGENT, UNKNOWN
+    created_at: datetime.datetime = Field(
+        default_factory=datetime.datetime.now)
+    content: str  # The actual code content, kept for processing
+
 
 class Finding(BaseModel):
     """Represents a single security finding."""
@@ -62,60 +72,71 @@ class Finding(BaseModel):
     severity: Severity
     rule_id: str
     description: str
-    location: Optional[str] = None # e.g., "line 5-7"
+    location: Optional[str] = None  # e.g., "line 5-7"
     evidence_snippet: Optional[str] = None
     remediation_guidance: str
     cwe_mapping: Optional[str] = None
+
 
 class DependencyRecord(BaseModel):
     """Represents a detected dependency package."""
     name: str
     version_spec: str
-    source_file: str # e.g., requirements.txt
+    source_file: str  # e.g., requirements.txt
     status: DependencyStatus
     risk_notes: Optional[str] = None
+
 
 class GateConfig(BaseModel):
     """Represents a single gate configuration within the GatePlan."""
     gate_type: GateType
     tools: List[str]
     required_checks: List[str]
-    failure_action: str # e.g., BLOCK, WARN
+    failure_action: str  # e.g., BLOCK, WARN
     owner_role: Optional[str] = "DevSecOps Team"
     evidence_required: List[str] = []
+
 
 class GatePlan(BaseModel):
     """Represents the overall CI/CD gate plan."""
     gates: List[GateConfig]
 
+
 class EvidenceManifest(BaseModel):
     """Records metadata about the analysis run and its outputs."""
     run_id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    generated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    generated_at: datetime.datetime = Field(
+        default_factory=datetime.datetime.now)
     team_or_user: str = "InnovateTech DevSecOps"
     app_version: str = "1.0.0-alpha"
-    inputs_hash: str # Hash of all input artifacts combined
-    outputs_hash: str # Hash of all output reports combined
-    artifacts: List[Dict[str, Any]] # Simplified artifact info for manifest
+    inputs_hash: str  # Hash of all input artifacts combined
+    outputs_hash: str  # Hash of all output reports combined
+    artifacts: List[Dict[str, Any]]  # Simplified artifact info for manifest
 
 # --- Rule Engine Structure ---
+
+
 class Rule(BaseModel):
     """Defines a security rule for static analysis."""
     rule_id: str
-    detection_method: str # REGEX or AST
+    detection_method: str  # REGEX or AST
     severity: Severity
     description: str
     remediation_guidance: str
     cwe_mapping: Optional[str] = None
-    pattern: Optional[str] = None # For REGEX rules
-    ast_check_func: Optional[Any] = None # For AST rules (function reference)
+    pattern: Optional[str] = None  # For REGEX rules
+    ast_check_func: Optional[Any] = None  # For AST rules (function reference)
+
 
 # --- Configuration for Dependency Analysis ---
 DEPENDENCY_CONFIG = {
     "allowlist": ["requests", "numpy", "pandas", "Flask", "fastapi", "sqlalchemy"],
-    "denylist": ["shodan", "pickle", "pyyaml", "MD5", "Crypto.Cipher.ARC4"], # Common risky libs
-    "hallucinated_suffix": ["-pro", "-enterprise", "-ai", "-securelib", "-advanced", "-extras", "-utils", "-enhanced", "-premium", "-plus", "-secure"], # Suffixes to flag as potential hallucination
-    "popular_package_prefixes": ["flask", "django", "numpy", "pandas", "requests", "tensorflow", "pytorch", "scikit", "boto", "aws"] # Real packages that AIs often hallucinate variations of
+    # Common risky libs
+    "denylist": ["shodan", "pickle", "pyyaml", "MD5", "Crypto.Cipher.ARC4"],
+    # Suffixes to flag as potential hallucination
+    "hallucinated_suffix": ["-pro", "-enterprise", "-ai", "-securelib", "-advanced", "-extras", "-utils", "-enhanced", "-premium", "-plus", "-secure"],
+    # Real packages that AIs often hallucinate variations of
+    "popular_package_prefixes": ["flask", "django", "numpy", "pandas", "requests", "tensorflow", "pytorch", "scikit", "boto", "aws"]
 }
 
 # --- Mock synthetic data for demonstration ---
@@ -211,6 +232,8 @@ dependencies = [
 all_artifacts: List[CodeArtifact] = []
 all_findings: List[Finding] = []
 all_dependencies: List[DependencyRecord] = []
+
+
 def generate_code_artifact(filename: str, content: str, source: str = "UNKNOWN") -> CodeArtifact:
     """
     Creates a CodeArtifact object, including generating a SHA256 content hash.
@@ -225,6 +248,7 @@ def generate_code_artifact(filename: str, content: str, source: str = "UNKNOWN")
     all_artifacts.append(artifact)
     return artifact
 
+
 # Ingest our synthetic code snippets
 for filename, content in SYNTHETIC_CODE_SNIPPETS.items():
     if "app_with_secrets.py" in filename:
@@ -236,7 +260,8 @@ for filename, content in SYNTHETIC_CODE_SNIPPETS.items():
 
 print(f"Generated {len(all_artifacts)} CodeArtifacts:")
 for artifact in all_artifacts:
-    print(f"- ID: {artifact.artifact_id}, File: {artifact.filename}, Hash: {artifact.content_hash[:8]}...")
+    print(
+        f"- ID: {artifact.artifact_id}, File: {artifact.filename}, Hash: {artifact.content_hash[:8]}...")
 # --- Static Analysis Rule Definitions ---
 # REGEX-based rules
 STATIC_RULES: List[Rule] = [
@@ -287,6 +312,7 @@ STATIC_RULES: List[Rule] = [
     )
 ]
 
+
 def find_vulnerabilities_regex(artifact: CodeArtifact, rules: List[Rule]) -> List[Finding]:
     """
     Applies regex-based rules to a code artifact and returns detected findings.
@@ -326,6 +352,7 @@ def find_vulnerabilities_regex(artifact: CodeArtifact, rules: List[Rule]) -> Lis
                     )
     return findings
 
+
 # Execute regex-based checks
 for artifact in all_artifacts:
     regex_findings = find_vulnerabilities_regex(artifact, STATIC_RULES)
@@ -338,6 +365,8 @@ if all_findings:
     for finding in all_findings:
         print(f"  - [{finding.severity.value}] {finding.rule_id} in {next(a.filename for a in all_artifacts if a.artifact_id == finding.artifact_id)} at {finding.location}: '{finding.evidence_snippet}'")
 # --- AST-based rule functions ---
+
+
 def check_dangerous_exec_ast(node: ast.AST, artifact_id: uuid.UUID) -> List[Finding]:
     findings: List[Finding] = []
     if isinstance(node, (ast.Call, ast.Attribute)):
@@ -382,6 +411,7 @@ def check_dangerous_exec_ast(node: ast.AST, artifact_id: uuid.UUID) -> List[Find
                     )
     return findings
 
+
 def check_unsafe_deserialization_ast(node: ast.AST, artifact_id: uuid.UUID) -> List[Finding]:
     findings: List[Finding] = []
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
@@ -402,6 +432,7 @@ def check_unsafe_deserialization_ast(node: ast.AST, artifact_id: uuid.UUID) -> L
                 )
     return findings
 
+
 # Add AST-based rules to the STATIC_RULES list
 # Note: For AST rules, 'pattern' is None, and 'ast_check_func' is set
 STATIC_RULES.extend([
@@ -421,7 +452,7 @@ STATIC_RULES.extend([
         description="subprocess.run with shell=True is dangerous.",
         remediation_guidance="Refactor to pass commands as a list and avoid shell=True.",
         cwe_mapping="CWE-78",
-        ast_check_func=check_dangerous_exec_ast # Reusing the same check function
+        ast_check_func=check_dangerous_exec_ast  # Reusing the same check function
     ),
     Rule(
         rule_id="AST_PICKLE_LOADS",
@@ -434,6 +465,7 @@ STATIC_RULES.extend([
     )
 ])
 
+
 def find_vulnerabilities_ast(artifact: CodeArtifact, rules: List[Rule]) -> List[Finding]:
     """
     Applies AST-based rules to a code artifact and returns detected findings.
@@ -444,20 +476,26 @@ def find_vulnerabilities_ast(artifact: CodeArtifact, rules: List[Rule]) -> List[
         for node in ast.walk(tree):
             for rule in rules:
                 if rule.detection_method == "AST" and rule.ast_check_func:
-                    findings.extend(rule.ast_check_func(node, artifact.artifact_id))
+                    findings.extend(rule.ast_check_func(
+                        node, artifact.artifact_id))
     except SyntaxError as e:
-        print(f"Skipping AST analysis for {artifact.filename} due to syntax error: {e}")
+        print(
+            f"Skipping AST analysis for {artifact.filename} due to syntax error: {e}")
     return findings
+
 
 # Capture the count of findings *before* AST checks are applied in this cell
 num_findings_before_ast = len(all_findings)
-current_ast_pass_findings: List[Finding] = [] # To store findings *from this specific AST pass* for display
+# To store findings *from this specific AST pass* for display
+current_ast_pass_findings: List[Finding] = []
 
 # Execute AST-based checks
 for artifact in all_artifacts:
-    ast_findings_for_artifact = find_vulnerabilities_ast(artifact, STATIC_RULES)
+    ast_findings_for_artifact = find_vulnerabilities_ast(
+        artifact, STATIC_RULES)
     all_findings.extend(ast_findings_for_artifact)
-    current_ast_pass_findings.extend(ast_findings_for_artifact) # Collect for display
+    current_ast_pass_findings.extend(
+        ast_findings_for_artifact)  # Collect for display
 
 # Display new findings
 # The "new AST-based vulnerabilities" are simply the difference in total findings after this pass
@@ -466,6 +504,8 @@ if current_ast_pass_findings:
     print("\nSample of new AST findings:")
     for finding in current_ast_pass_findings:
         print(f"  - [{finding.severity.value}] {finding.rule_id} in {next(a.filename for a in all_artifacts if a.artifact_id == finding.artifact_id)} at {finding.location}: '{finding.evidence_snippet}'")
+
+
 def parse_and_analyze_dependencies(filename: str, content: str, artifact_id: uuid.UUID) -> List[DependencyRecord]:
     """
     Parses dependency file content and analyzes packages against allow/denylists and for hallucination risk.
@@ -492,13 +532,13 @@ def parse_and_analyze_dependencies(filename: str, content: str, artifact_id: uui
         elif filename.endswith("pyproject.toml"):
             # Simplified parsing: looking for direct dependencies within TOML
             match = re.match(r'\"([a-zA-Z0-9_\-\.]+)(?:[<>=!~]+(.+))?\"', line)
-            if match and "dependencies" in content: # Crude check to ensure it's in the deps section
+            if match and "dependencies" in content:  # Crude check to ensure it's in the deps section
                 package_name = match.group(1).lower()
                 version_spec = match.group(2) if match.group(2) else ""
         elif filename.endswith("package.json"):
             # Simplified parsing for package.json "dependency": "version"
             match = re.match(r'"([a-zA-Z0-9_\-\.\/]+)"\s*:\s*"(.+)"', line)
-            if match and '"dependencies": {{' in content: # Crude check
+            if match and '"dependencies": {{' in content:  # Crude check
                 package_name = match.group(1).lower()
                 version_spec = match.group(2) if match.group(2) else ""
 
@@ -523,11 +563,12 @@ def parse_and_analyze_dependencies(filename: str, content: str, artifact_id: uui
             )
         elif package_name in DEPENDENCY_CONFIG["allowlist"]:
             dep_status = DependencyStatus.ALLOW
-        else: # Potentially UNKNOWN or Hallucinated
+        else:  # Potentially UNKNOWN or Hallucinated
             dep_status = DependencyStatus.UNKNOWN
             # Check for hallucination by suspicious suffix
-            is_hallucinated = any(package_name.endswith(suffix) for suffix in DEPENDENCY_CONFIG["hallucinated_suffix"])
-            
+            is_hallucinated = any(package_name.endswith(suffix)
+                                  for suffix in DEPENDENCY_CONFIG["hallucinated_suffix"])
+
             # Check for hallucination by fake variation of popular package
             if not is_hallucinated:
                 for prefix in DEPENDENCY_CONFIG["popular_package_prefixes"]:
@@ -535,9 +576,10 @@ def parse_and_analyze_dependencies(filename: str, content: str, artifact_id: uui
                     if package_name.startswith(prefix + "-") and package_name not in DEPENDENCY_CONFIG["allowlist"]:
                         is_hallucinated = True
                         break
-            
+
             if is_hallucinated:
-                risk_notes.append(f"Package '{package_name}' flagged as potential hallucination risk (suspicious naming).")
+                risk_notes.append(
+                    f"Package '{package_name}' flagged as potential hallucination risk (suspicious naming).")
                 all_findings.append(
                     Finding(
                         artifact_id=artifact_id,
@@ -548,11 +590,12 @@ def parse_and_analyze_dependencies(filename: str, content: str, artifact_id: uui
                         remediation_guidance="Verify package existence and authenticity. Avoid unknown/hallucinated packages.",
                         location=f"File: {filename}",
                         evidence_snippet=line,
-                        cwe_mapping="CWE-506" # Supply Chain Exploitation
+                        cwe_mapping="CWE-506"  # Supply Chain Exploitation
                     )
                 )
             else:
-                risk_notes.append(f"Package '{package_name}' is not in the allowlist or denylist.")
+                risk_notes.append(
+                    f"Package '{package_name}' is not in the allowlist or denylist.")
 
         dependencies.append(
             DependencyRecord(
@@ -565,11 +608,14 @@ def parse_and_analyze_dependencies(filename: str, content: str, artifact_id: uui
         )
     return dependencies
 
+
 # Ingest and analyze dependency files
 for dep_filename, dep_content in SYNTHETIC_DEPENDENCY_FILES.items():
     # Create a dummy artifact for the dependency file itself, for linking findings
-    dep_artifact = generate_code_artifact(dep_filename, dep_content, source="UNKNOWN_DEPENDENCY_FILE")
-    dep_records = parse_and_analyze_dependencies(dep_filename, dep_content, dep_artifact.artifact_id)
+    dep_artifact = generate_code_artifact(
+        dep_filename, dep_content, source="UNKNOWN_DEPENDENCY_FILE")
+    dep_records = parse_and_analyze_dependencies(
+        dep_filename, dep_content, dep_artifact.artifact_id)
     all_dependencies.extend(dep_records)
 
 print(f"\nFound {len(all_dependencies)} dependencies across files.")
@@ -578,12 +624,15 @@ for dep in all_dependencies:
     print(f"- Package: {dep.name} ({dep.version_spec}) from {dep.source_file}, Status: {dep.status.value}, Notes: {dep.risk_notes if dep.risk_notes else 'N/A'}")
 
 # Display findings related to dependencies
-dep_findings = [f for f in all_findings if f.finding_type in [FindingType.INSECURE_DEPENDENCY, FindingType.HALLUCINATED_PACKAGE]]
+dep_findings = [f for f in all_findings if f.finding_type in [
+    FindingType.INSECURE_DEPENDENCY, FindingType.HALLUCINATED_PACKAGE]]
 if dep_findings:
     print("\nSample of new Dependency-related findings:")
     for finding in dep_findings:
         print(f"  - [{finding.severity.value}] {finding.rule_id} in {next(a.filename for a in all_artifacts if a.artifact_id == finding.artifact_id).split('/')[-1]}: {finding.description}")
 # Function to generate the CI/CD Gate Plan
+
+
 def generate_ci_cd_gate_plan(all_findings: List[Finding], all_dependencies: List[DependencyRecord]) -> GatePlan:
     """
     Generates a CI/CD GatePlan based on identified findings and dependency risks.
@@ -597,14 +646,18 @@ def generate_ci_cd_gate_plan(all_findings: List[Finding], all_dependencies: List
         Severity.MEDIUM: 10,
         Severity.LOW: 1
     }
-    total_risk_score = sum(risk_weights.get(f.severity, 0) for f in all_findings)
+    total_risk_score = sum(risk_weights.get(f.severity, 0)
+                           for f in all_findings)
 
     # Determine if any CRITICAL/HIGH findings exist
-    has_high_critical_findings = any(f.severity in [Severity.CRITICAL, Severity.HIGH] for f in all_findings)
+    has_high_critical_findings = any(
+        f.severity in [Severity.CRITICAL, Severity.HIGH] for f in all_findings)
     # Determine if any SECRET findings exist
-    has_secret_findings = any(f.finding_type == FindingType.SECRET for f in all_findings)
+    has_secret_findings = any(
+        f.finding_type == FindingType.SECRET for f in all_findings)
     # Determine if any UNKNOWN/DENY dependencies exist
-    has_risky_dependencies = any(d.status in [DependencyStatus.DENY, DependencyStatus.UNKNOWN] for d in all_dependencies)
+    has_risky_dependencies = any(d.status in [
+                                 DependencyStatus.DENY, DependencyStatus.UNKNOWN] for d in all_dependencies)
 
     # Base CI_SECURITY Gate
     ci_security_action = "WARN"
@@ -615,9 +668,11 @@ def generate_ci_cd_gate_plan(all_findings: List[Finding], all_dependencies: List
         GateConfig(
             gate_type=GateType.CI_SECURITY,
             tools=["SAST Scanner", "Dependency Scanner"],
-            required_checks=["No HIGH/CRITICAL Vulnerabilities", "Dependency Allowlist Compliance"],
+            required_checks=["No HIGH/CRITICAL Vulnerabilities",
+                             "Dependency Allowlist Compliance"],
             failure_action=ci_security_action,
-            evidence_required=["code_gen_risk_findings.json", "dependency_risk_report.json"]
+            evidence_required=["code_gen_risk_findings.json",
+                               "dependency_risk_report.json"]
         )
     )
 
@@ -633,12 +688,12 @@ def generate_ci_cd_gate_plan(all_findings: List[Finding], all_dependencies: List
             )
         )
     else:
-         gates.append( # Even if no findings, we want this gate to exist with a WARN or PASS
+        gates.append(  # Even if no findings, we want this gate to exist with a WARN or PASS
             GateConfig(
                 gate_type=GateType.PRE_COMMIT,
                 tools=["Secret Scanner", "Linter"],
                 required_checks=["No Hardcoded Secrets", "Code Formatting"],
-                failure_action="WARN", # Warn if no secrets but still run checks
+                failure_action="WARN",  # Warn if no secrets but still run checks
                 evidence_required=["code_gen_risk_findings.json"]
             )
         )
@@ -666,12 +721,14 @@ def generate_ci_cd_gate_plan(all_findings: List[Finding], all_dependencies: List
     )
 
     # PRE_DEPLOY Gate - manual approval + audit (always present for critical apps)
-    pre_deploy_action = "BLOCK" if total_risk_score > 0 else "WARN" # Block if any risk, otherwise warn for manual review
+    # Block if any risk, otherwise warn for manual review
+    pre_deploy_action = "BLOCK" if total_risk_score > 0 else "WARN"
     gates.append(
         GateConfig(
             gate_type=GateType.PRE_DEPLOY,
             tools=["Manual Review", "Audit Artifact Check"],
-            required_checks=["Security Audit Approval", "Artifact Integrity Check"],
+            required_checks=["Security Audit Approval",
+                             "Artifact Integrity Check"],
             failure_action=pre_deploy_action,
             owner_role="Release Manager"
         )
@@ -679,41 +736,56 @@ def generate_ci_cd_gate_plan(all_findings: List[Finding], all_dependencies: List
 
     return GatePlan(gates=gates)
 
+
 # Generate the Gate Plan
 sdlc_gate_plan = generate_ci_cd_gate_plan(all_findings, all_dependencies)
 
 # Preview the generated YAML
 print("\n--- Generated CI/CD Gate Plan (YAML Preview) ---")
-sdlc_gate_plan_yaml = yaml.dump(sdlc_gate_plan.model_dump(by_alias=True), indent=2, sort_keys=False)
+sdlc_gate_plan_yaml = yaml.dump(sdlc_gate_plan.model_dump(
+    by_alias=True), indent=2, sort_keys=False)
 print(sdlc_gate_plan_yaml)
 # --- Helper to hash output content ---
+
+
 def hash_content(content: str) -> str:
     return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
+
 # 8.1 Export Findings and Dependency Reports (JSON)
-findings_json_content = json.dumps([f.model_dump(mode='json') for f in all_findings], indent=2)
-dependency_report_json_content = json.dumps([d.model_dump(mode='json') for d in all_dependencies], indent=2)
+findings_json_content = json.dumps(
+    [f.model_dump(mode='json') for f in all_findings], indent=2)
+dependency_report_json_content = json.dumps(
+    [d.model_dump(mode='json') for d in all_dependencies], indent=2)
 
 # 8.2 Export CI/CD Gate Plan (YAML)
 # sdlc_gate_plan_yaml is already generated in the previous step
 
 # 8.3 Generate Executive Summary (Markdown)
+
+
 def generate_executive_summary(findings: List[Finding], dependencies: List[DependencyRecord]) -> str:
     num_critical = sum(1 for f in findings if f.severity == Severity.CRITICAL)
     num_high = sum(1 for f in findings if f.severity == Severity.HIGH)
     num_medium = sum(1 for f in findings if f.severity == Severity.MEDIUM)
-    num_secrets = sum(1 for f in findings if f.finding_type == FindingType.SECRET)
-    num_insecure_deps = sum(1 for f in findings if f.finding_type == FindingType.INSECURE_DEPENDENCY)
-    num_hallucinated_deps = sum(1 for f in findings if f.finding_type == FindingType.HALLUCINATED_PACKAGE)
+    num_secrets = sum(1 for f in findings if f.finding_type ==
+                      FindingType.SECRET)
+    num_insecure_deps = sum(
+        1 for f in findings if f.finding_type == FindingType.INSECURE_DEPENDENCY)
+    num_hallucinated_deps = sum(
+        1 for f in findings if f.finding_type == FindingType.HALLUCINATED_PACKAGE)
 
     risk_themes = []
-    if num_secrets > 0: risk_themes.append("Hard-coded Secrets & Credential Leaks")
+    if num_secrets > 0:
+        risk_themes.append("Hard-coded Secrets & Credential Leaks")
     if any(f.finding_type in [FindingType.INJECTION_SINK, FindingType.DANGEROUS_EXEC, FindingType.UNSAFE_DESERIALIZATION] for f in findings):
         risk_themes.append("Insecure Input Handling & Dynamic Execution")
     if num_insecure_deps > 0 or num_hallucinated_deps > 0:
-        risk_themes.append("Dependency / Package Hallucinations & Risky Libraries")
+        risk_themes.append(
+            "Dependency / Package Hallucinations & Risky Libraries")
 
-    top_findings = sorted(findings, key=lambda f: (f.severity.value, f.finding_type.value), reverse=True)[:5]
+    top_findings = sorted(findings, key=lambda f: (
+        f.severity.value, f.finding_type.value), reverse=True)[:5]
 
     summary = f"""# AI Code Generation Risk Assessment Summary for InnovateTech Solutions\n\n## Overview\nThis report summarizes the security posture of AI-generated code artifacts within InnovateTech Solutions, following recent increases in security incidents linked to AI-assisted development. A total of {len(all_artifacts)} code artifacts and {len(all_dependencies)} dependencies were analyzed.\n\n## Key Findings & Risk Themes\nThe analysis identified significant security risks, primarily centered around:\n- **{', '.join(risk_themes if risk_themes else ['No major risk themes identified - excellent!'])}**\n\n**Severity Breakdown:**\n- **CRITICAL:** {num_critical} findings\n- **HIGH:** {num_high} findings\n- **MEDIUM:** {num_medium} findings\n- **LOW:** {sum(1 for f in findings if f.severity == Severity.LOW)} findings\n\n**Top 5 Specific Findings:**\n"""
     if top_findings:
@@ -725,27 +797,34 @@ def generate_executive_summary(findings: List[Finding], dependencies: List[Depen
     summary += f"""\n## Control Plan Overview\nBased on these findings, an automated CI/CD Gate Plan (`sdlc_control_plan.yaml`) has been generated. This plan integrates security checks into our development pipeline, enforcing controls such as:\n- **Blocking deployments** for `CRITICAL` or `HIGH` vulnerabilities.\n- **Enforcing secret scanning** at `PRE_COMMIT` to prevent credential leaks.\n- **Mandating dependency allowlist compliance** during `CI_SECURITY` scans.\n\nThis structured approach ensures that security is baked into our SDLC, proactively mitigating risks introduced by AI-generated code and strengthening our overall application security posture.\n"""
     return summary
 
-executive_summary_md_content = generate_executive_summary(all_findings, all_dependencies)
+
+executive_summary_md_content = generate_executive_summary(
+    all_findings, all_dependencies)
 
 
 # 8.4 Generate Evidence Manifest (JSON)
 # Calculate inputs_hash
-all_artifact_hashes_str = "".join(sorted([a.content_hash for a in all_artifacts]))
-inputs_hash = hashlib.sha256(all_artifact_hashes_str.encode('utf-8')).hexdigest()
+all_artifact_hashes_str = "".join(
+    sorted([a.content_hash for a in all_artifacts]))
+inputs_hash = hashlib.sha256(
+    all_artifact_hashes_str.encode('utf-8')).hexdigest()
 
 # Calculate outputs_hash (hash of all generated reports)
-combined_outputs_content = findings_json_content + dependency_report_json_content + sdlc_gate_plan_yaml + executive_summary_md_content
-outputs_hash = hashlib.sha256(combined_outputs_content.encode('utf-8')).hexdigest()
+combined_outputs_content = findings_json_content + \
+    dependency_report_json_content + sdlc_gate_plan_yaml + executive_summary_md_content
+outputs_hash = hashlib.sha256(
+    combined_outputs_content.encode('utf-8')).hexdigest()
 
 manifest = EvidenceManifest(
     inputs_hash=inputs_hash,
     outputs_hash=outputs_hash,
-    artifacts=[{"artifact_id": str(a.artifact_id), "filename": a.filename, "content_hash": a.content_hash} for a in all_artifacts]
+    artifacts=[{"artifact_id": str(a.artifact_id), "filename": a.filename,
+                "content_hash": a.content_hash} for a in all_artifacts]
 )
-evidence_manifest_json_content = json.dumps(manifest.model_dump(mode='json'), indent=2)
+evidence_manifest_json_content = json.dumps(
+    manifest.model_dump(mode='json'), indent=2)
 
 # Simulate writing files to disk
-import os
 output_dir = "./audit_reports"
 os.makedirs(output_dir, exist_ok=True)
 
@@ -761,10 +840,15 @@ with open(f"{output_dir}/evidence_manifest.json", "w") as f:
     f.write(evidence_manifest_json_content)
 
 print(f"\n--- All reports generated and saved to '{output_dir}/' ---")
-print(f"Generated code_gen_risk_findings.json (size: {len(findings_json_content)} bytes)")
-print(f"Generated dependency_risk_report.json (size: {len(dependency_report_json_content)} bytes)")
-print(f"Generated sdlc_control_plan.yaml (size: {len(sdlc_gate_plan_yaml)} bytes)")
-print(f"Generated case5_executive_summary.md (size: {len(executive_summary_md_content)} bytes)")
-print(f"Generated evidence_manifest.json (size: {len(evidence_manifest_json_content)} bytes)")
+print(
+    f"Generated code_gen_risk_findings.json (size: {len(findings_json_content)} bytes)")
+print(
+    f"Generated dependency_risk_report.json (size: {len(dependency_report_json_content)} bytes)")
+print(
+    f"Generated sdlc_control_plan.yaml (size: {len(sdlc_gate_plan_yaml)} bytes)")
+print(
+    f"Generated case5_executive_summary.md (size: {len(executive_summary_md_content)} bytes)")
+print(
+    f"Generated evidence_manifest.json (size: {len(evidence_manifest_json_content)} bytes)")
 print(f"Inputs Hash: {inputs_hash[:16]}...")
 print(f"Outputs Hash: {outputs_hash[:16]}...")

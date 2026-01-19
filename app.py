@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import json
@@ -54,6 +55,14 @@ if "inputs_hash_state" not in st.session_state:
     st.session_state.inputs_hash_state = ""
 if "outputs_hash_state" not in st.session_state:
     st.session_state.outputs_hash_state = ""
+if "zip_generated" not in st.session_state:
+    st.session_state.zip_generated = False
+if "zip_data" not in st.session_state:
+    st.session_state.zip_data = None
+if "zip_size" not in st.session_state:
+    st.session_state.zip_size = 0
+if "auto_clear_next" not in st.session_state:
+    st.session_state.auto_clear_next = False
 
 
 def run_full_analysis():
@@ -568,53 +577,65 @@ elif st.session_state.current_page == "Exports & Evidence":
             "No reports generated. Please go to 'Analysis Dashboard' to run an analysis.")
     else:
         st.subheader("Download Auditable Reports")
-        col_dl1, col_dl2, col_dl3, col_dl4, col_dl5 = st.columns(5)
-        with col_dl1:
-            st.download_button(
-                label="Findings JSON",
-                data=st.session_state.findings_json_content_state,
-                file_name="code_gen_risk_findings.json",
-                mime="application/json",
-                help="Detailed list of all identified security findings."
-            )
-        with col_dl2:
-            st.download_button(
-                label="Dependencies JSON",
-                data=st.session_state.dependency_report_json_content_state,
-                file_name="dependency_risk_report.json",
-                mime="application/json",
-                help="Report on all parsed dependencies, their status, and risks."
-            )
-        with col_dl3:
-            st.download_button(
-                label="Gate Plan YAML",
-                data=st.session_state.sdlc_gate_plan_yaml_state,
-                file_name="sdlc_control_plan.yaml",
-                mime="application/x-yaml",
-                help="CI/CD gate configuration based on analysis findings."
-            )
-        with col_dl4:
-            st.download_button(
-                label="Executive Summary MD",
-                data=st.session_state.executive_summary_md_content_state,
-                file_name="case5_executive_summary.md",
-                mime="text/markdown",
-                help="High-level summary of risks and control plan for leadership."
-            )
-        with col_dl5:
-            st.download_button(
-                label="Evidence Manifest JSON",
-                data=st.session_state.evidence_manifest_json_content_state,
-                file_name="evidence_manifest.json",
-                mime="application/json",
-                help="Immutable record of analysis run, inputs, and outputs hashes."
-            )
-        st.markdown(f"---")
-        st.subheader("Overall Analysis Hashes")
-        st.markdown(
-            f"**Inputs Hash (SHA256):** `{st.session_state.inputs_hash_state}`")
-        st.markdown(
-            f"**Outputs Hash (SHA256):** `{st.session_state.outputs_hash_state}`")
+
+        # Generate Zip button and workflow
+        if not st.session_state.zip_generated:
+            # Check if we need to auto-clear from previous download
+            if st.session_state.auto_clear_next:
+                st.session_state.zip_generated = False
+                st.session_state.zip_data = None
+                st.session_state.zip_size = 0
+                st.session_state.auto_clear_next = False
+            
+            if st.button("Generate Zip", type="primary"):
+                # Create zip file in memory
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    # Add all artifacts
+                    for artifact in st.session_state.all_artifacts_state:
+                        zip_file.writestr(
+                            f"artifacts/{artifact.filename}", artifact.content)
+
+                    # Add reports
+                    zip_file.writestr(
+                        "code_gen_risk_findings.json", st.session_state.findings_json_content_state)
+                    zip_file.writestr(
+                        "dependency_risk_report.json", st.session_state.dependency_report_json_content_state)
+                    zip_file.writestr("sdlc_control_plan.yaml",
+                                      st.session_state.sdlc_gate_plan_yaml_state)
+                    zip_file.writestr(
+                        "case5_executive_summary.md", st.session_state.executive_summary_md_content_state)
+                    zip_file.writestr(
+                        "evidence_manifest.json", st.session_state.evidence_manifest_json_content_state)
+
+                # Store zip data in session state
+                st.session_state.zip_data = zip_buffer.getvalue()
+                st.session_state.zip_size = len(st.session_state.zip_data)
+                st.session_state.zip_generated = True
+                st.rerun()
+        else:
+            # Show zip size
+            size_kb = st.session_state.zip_size / 1024
+            size_mb = size_kb / 1024
+            if size_mb >= 1:
+                size_str = f"{size_mb:.2f} MB"
+            else:
+                size_str = f"{size_kb:.2f} KB"
+
+            st.info(f"Zip file generated successfully! Size: {size_str}")
+
+            col_zip1, col_zip2, col_zip3 = st.columns([1, 1, 1])
+            with col_zip2:
+                # Download button - set flag to clear on next rerun
+                st.download_button(
+                    label="Download Zip",
+                    data=st.session_state.zip_data,
+                    file_name="audit_reports_package.zip",
+                    mime="application/zip",
+                    type="primary",
+                    use_container_width=True,
+                    on_click=lambda: st.session_state.update({"auto_clear_next": True})
+                )
         st.markdown(f"---")
         st.markdown(f"")
         st.markdown(f"All necessary audit reports have been successfully generated and are available for download. The detailed JSON reports provide granular data for developers, while the YAML gate plan is ready for our DevSecOps team. The executive summary offers a high-level overview for leadership, and critically, the `evidence_manifest.json` provides an immutable record of this entire analysis, linking inputs to outputs via cryptographic hashes. This ensures that every step of my security audit is verifiable, transparent, and defensible, meeting our organization's strict compliance requirements and solidifying our security posture against the evolving risks of AI-generated code.")
