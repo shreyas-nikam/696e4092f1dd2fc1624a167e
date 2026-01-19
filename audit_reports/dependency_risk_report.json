@@ -1,0 +1,86 @@
+[
+  {
+    "name": "requests",
+    "version_spec": "2.25.1",
+    "source_file": "requirements.txt",
+    "status": "ALLOW",
+    "risk_notes": null
+  },
+  {
+    "name": "flask-secure-pro",
+    "version_spec": "1.0.0 # Hallucinated package",
+    "source_file": "requirements.txt",
+    "status": "UNKNOWN",
+    "risk_notes": "Package 'flask-secure-pro' flagged as potential hallucination risk (suspicious naming)."
+  },
+  {
+    "name": "pyyaml",
+    "version_spec": "5.4.1 # Denylisted for unsafe loading",
+    "source_file": "requirements.txt",
+    "status": "DENY",
+    "risk_notes": "Package 'pyyaml' is on the denylist."
+  },
+  {
+    "name": "numpy",
+    "version_spec": "1.22.0",
+    "source_file": "requirements.txt",
+    "status": "ALLOW",
+    "risk_notes": null
+  },
+  {
+    "name": "fastapi",
+    "version_spec": "0.70.0",
+    "source_file": "pyproject.toml",
+    "status": "ALLOW",
+    "risk_notes": null
+  },
+  {
+    "name": "badlib-enterprise",
+    "version_spec": "0.0.1",
+    "source_file": "pyproject.toml",
+    "status": "UNKNOWN",
+    "risk_notes": "Package 'badlib-enterprise' flagged as potential hallucination risk (suspicious naming)."
+  },
+  {
+    "name": "sqlalchemy",
+    "version_spec": "1.4.27",
+    "source_file": "pyproject.toml",
+    "status": "ALLOW",
+    "risk_notes": null
+  },
+  {
+    "name": "name",
+    "version_spec": "frontend-app",
+    "source_file": "package.json",
+    "status": "UNKNOWN",
+    "risk_notes": "Package 'name' is not in the allowlist or denylist."
+  },
+  {
+    "name": "version",
+    "version_spec": "1.0.0",
+    "source_file": "package.json",
+    "status": "UNKNOWN",
+    "risk_notes": "Package 'version' is not in the allowlist or denylist."
+  },
+  {
+    "name": "express",
+    "version_spec": "^4.17.1",
+    "source_file": "package.json",
+    "status": "UNKNOWN",
+    "risk_notes": "Package 'express' is not in the allowlist or denylist."
+  },
+  {
+    "name": "lodash.get",
+    "version_spec": "^4.4.2",
+    "source_file": "package.json",
+    "status": "UNKNOWN",
+    "risk_notes": "Package 'lodash.get' is not in the allowlist or denylist."
+  },
+  {
+    "name": "insecure-js-lib",
+    "version_spec": "1.0.0",
+    "source_file": "package.json",
+    "status": "UNKNOWN",
+    "risk_notes": "Package 'insecure-js-lib' is not in the allowlist or denylist."
+  }
+]

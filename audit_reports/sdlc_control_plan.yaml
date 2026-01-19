@@ -1,0 +1,55 @@
+gates:
+- gate_type: !!python/object/apply:source.GateType
+  - CI_SECURITY
+  tools:
+  - SAST Scanner
+  - Dependency Scanner
+  required_checks:
+  - No HIGH/CRITICAL Vulnerabilities
+  - Dependency Allowlist Compliance
+  failure_action: BLOCK
+  owner_role: DevSecOps Team
+  evidence_required:
+  - code_gen_risk_findings.json
+  - dependency_risk_report.json
+- gate_type: !!python/object/apply:source.GateType
+  - PRE_COMMIT
+  tools:
+  - Secret Scanner
+  required_checks:
+  - No Hardcoded Secrets
+  failure_action: BLOCK
+  owner_role: DevSecOps Team
+  evidence_required:
+  - code_gen_risk_findings.json
+- gate_type: !!python/object/apply:source.GateType
+  - CI_BUILD
+  tools:
+  - Build Tool
+  - Linter
+  required_checks:
+  - Successful Build
+  - Code Linting
+  failure_action: BLOCK
+  owner_role: Development Team
+  evidence_required: []
+- gate_type: !!python/object/apply:source.GateType
+  - CI_TEST
+  tools:
+  - Test Runner
+  required_checks:
+  - All Unit Tests Pass
+  failure_action: BLOCK
+  owner_role: QA Team
+  evidence_required: []
+- gate_type: !!python/object/apply:source.GateType
+  - PRE_DEPLOY
+  tools:
+  - Manual Review
+  - Audit Artifact Check
+  required_checks:
+  - Security Audit Approval
+  - Artifact Integrity Check
+  failure_action: BLOCK
+  owner_role: Release Manager
+  evidence_required: []

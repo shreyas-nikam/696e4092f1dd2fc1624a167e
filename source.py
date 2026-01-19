@@ -114,7 +114,8 @@ class Rule(BaseModel):
 DEPENDENCY_CONFIG = {
     "allowlist": ["requests", "numpy", "pandas", "Flask", "fastapi", "sqlalchemy"],
     "denylist": ["shodan", "pickle", "pyyaml", "MD5", "Crypto.Cipher.ARC4"], # Common risky libs
-    "hallucinated_suffix": ["-pro", "-enterprise", "-ai", "-securelib"] # Suffixes to flag as potential hallucination
+    "hallucinated_suffix": ["-pro", "-enterprise", "-ai", "-securelib", "-advanced", "-extras", "-utils", "-enhanced", "-premium", "-plus", "-secure"], # Suffixes to flag as potential hallucination
+    "popular_package_prefixes": ["flask", "django", "numpy", "pandas", "requests", "tensorflow", "pytorch", "scikit", "boto", "aws"] # Real packages that AIs often hallucinate variations of
 }
 
 # --- Mock synthetic data for demonstration ---
@@ -243,10 +244,10 @@ STATIC_RULES: List[Rule] = [
         rule_id="SECRET_API_KEY",
         detection_method="REGEX",
         severity=Severity.CRITICAL,
-        description="Hard-coded API key detected.",
+        description="Hard-coded API key or secret detected.",
         remediation_guidance="Use environment variables or a secure secret management system.",
         cwe_mapping="CWE-798",
-        pattern=r"(api_key|secret|token|password|auth_token)\s*=\s*[\"'](sk-|AKIA|eyJ)[a-zA-Z0-9\-_]{16,}[\"']"
+        pattern=r"(?i)(api_key|secret|token|password|auth_token|aws_secret|api_secret)\s*=\s*[\"'][a-zA-Z0-9\-_/+]{20,}[\"']"
     ),
     Rule(
         rule_id="SECRET_AWS_KEY",
@@ -273,7 +274,7 @@ STATIC_RULES: List[Rule] = [
         description="Potential SQL injection due to f-string formatting in query.",
         remediation_guidance="Use parameterized queries instead of f-strings or string concatenation for SQL.",
         cwe_mapping="CWE-89",
-        pattern=r'(cursor\.execute\s*\(f"(SELECT|INSERT|UPDATE|DELETE).*"\))'
+        pattern=r'f"\s*(SELECT|INSERT|UPDATE|DELETE|select|insert|update|delete).*\{.*\}'
     ),
     Rule(
         rule_id="UNSAFE_CRYPTO_MD5",
@@ -524,8 +525,18 @@ def parse_and_analyze_dependencies(filename: str, content: str, artifact_id: uui
             dep_status = DependencyStatus.ALLOW
         else: # Potentially UNKNOWN or Hallucinated
             dep_status = DependencyStatus.UNKNOWN
-            # Check for hallucination
-            if any(package_name.endswith(suffix) for suffix in DEPENDENCY_CONFIG["hallucinated_suffix"]):
+            # Check for hallucination by suspicious suffix
+            is_hallucinated = any(package_name.endswith(suffix) for suffix in DEPENDENCY_CONFIG["hallucinated_suffix"])
+            
+            # Check for hallucination by fake variation of popular package
+            if not is_hallucinated:
+                for prefix in DEPENDENCY_CONFIG["popular_package_prefixes"]:
+                    # If package starts with known prefix and has a dash (indicating variation), flag it
+                    if package_name.startswith(prefix + "-") and package_name not in DEPENDENCY_CONFIG["allowlist"]:
+                        is_hallucinated = True
+                        break
+            
+            if is_hallucinated:
                 risk_notes.append(f"Package '{package_name}' flagged as potential hallucination risk (suspicious naming).")
                 all_findings.append(
                     Finding(
